@@ -1,3 +1,5 @@
+clear;
+%%
 % config structure used for selection ROI
 config_param.chanGroups(1).key           = 'FM';
 config_param.chanGroups(1).full_name     = 'Frontal-midline';
@@ -13,7 +15,7 @@ config_param.chanGroups(4).full_name     = 'Right-temporal';
 config_param.chanGroups(4).chan_names    = {'g24','y20', 'r18', 'r20'}; 
 
 %% Load results structs
-band = 'alpha';
+band = 'theta';
 run = 'end';
 main_dir = ['P:\Jose_Chonay\frequency_sliding\' band];
 % load populations and task
@@ -23,6 +25,8 @@ ct_s = load([main_dir '\ctrls_probe_stat_fsliding_' run '.mat']);
 pt_m = load([main_dir '\ptnts_probe_mobi_fsliding_' run '.mat']);
 ct_m = load([main_dir '\ctrls_probe_mobi_fsliding_' run '.mat']);
 
+% load permutation test restults
+load([main_dir '\within_subs_perm_' run '.mat']);
 %% cut data
 % cut the first and the las 200ms to avoid the noise created by the
 % filtering windows also cut the time vector
@@ -84,24 +88,24 @@ for pop = 1:2 %control or patient
                 end
                     % Labels and formatting
                     title(['Channel ' config_param.chanGroups(Fi).key ]);
-                    ylim([9 11]);
+                    ylim([5 7]);
                     xlabel('Time (s)');
                     ylabel('Frequency (Hz)');
                 end
-                % run a permutation between subjects
-                x = squeeze(mean(trials{1,pop}{1,1}(chan_indices, :, :),1)); % stationary
-                y = squeeze(mean(trials{1,pop}{1,2}(chan_indices, :, :),1)); % mobile
-                % paramaters set to within subject analysis and p
-                % threshold of 0.05
-                [clusters, p_values, t_sums] = permutest(y,x,1,0.05,[],1);
                 % when t_sums is empty there were no significant clusters
-                if ~isempty(t_sums)
+                if ~isempty(permr.controls(Fi).t_sums)
                     % for every significan cluster we will mark the
                     % position in the time axis
-                    for i_c = 1:length(clusters)
+                    for i_c = 1:length(permr.controls(Fi).clusters)
+                        % check if the cluster p value is smaller than the
+                        % alpha level
+                        if permr.controls(Fi).p_values(i_c) >= permr.params.p_threshold
+                            continue;
+                        end
                         hold on
-                        y_value = 9.3; % Set the y-coordinate
-                        plot(time(clusters{1,i_c}), y_value * ones(size(time(clusters{1,i_c}))),...
+                        y_value = 5.3; % Set the y-coordinate
+                        plot(permr.controls(Fi).clusters_astime{1, i_c}, ...
+                            y_value * ones(size(permr.controls(Fi).clusters_astime{1, i_c})),...
                             'k.', 'LineWidth', 0.1);
                         % add one empty space for every cluster line
                         % created
@@ -141,24 +145,22 @@ for pop = 1:2 %control or patient
                     % Labels and formatting
                     title(['Channel ' config_param.chanGroups(Fi).key ]);
                     legend('','stationary','','mobile');
-                    ylim([9 11]);
+                    ylim([5 7]);
                     xlabel('Time (s)');
                     ylabel('Frequency (Hz)');
                 end
-                % run a permutation between subjects
-                x = squeeze(mean(trials{1,pop}{1,1}(chan_indices, :, :),1)); % stationary
-                y = squeeze(mean(trials{1,pop}{1,2}(chan_indices, :, :),1)); % mobile
-                % paramaters set to within subject analysis and p
-                % threshold of 0.05
-                [clusters, p_values, t_sums] = permutest(y,x,1,0.05,[],1);
                 % when t_sums is empty there were no significant clusters
-                if ~isempty(t_sums)
+                if ~isempty(permr.patients(Fi).t_sums)
                     % for every significan cluster we will mark the
                     % position in the time axis
-                    for i_c = 1:length(clusters)
+                    for i_c = 1:length(permr.patients(Fi).clusters)
+                        if permr.patients(Fi).p_values(i_c) >= permr.params.p_threshold
+                            continue;
+                        end
                         hold on
-                        y_value = 9.3; % Set the y-coordinate
-                        plot(time(clusters{1,i_c}), y_value * ones(size(time(clusters{1,i_c}))),...
+                        y_value = 5.3; % Set the y-coordinate
+                        plot(permr.patients(Fi).clusters_astime{1, i_c}, ...
+                            y_value * ones(size(permr.patients(Fi).clusters_astime{1, i_c})),...
                             'k.', 'LineWidth', 0.1);
                         % add one empty space for every cluster line
                         % created
@@ -171,4 +173,5 @@ for pop = 1:2 %control or patient
         end
     end
 end
-%print(gcf,[main_dir '\within_subs_' run '.png'],'-dpng','-r1500');
+%%
+print(gcf,[main_dir '\within_subs_' run '.png'],'-dpng','-r1500');
